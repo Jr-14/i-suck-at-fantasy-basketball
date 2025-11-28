@@ -1,36 +1,54 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+This is a Next.js (App Router) project using Drizzle ORM with SQLite, and Zod for validation. Below is the minimal setup to run the app locally and populate the DB.
 
-## Getting Started
+## Prerequisites
+- Node.js 18+
+- pnpm (recommended) or npm/yarn
 
-First, run the development server:
-
+## Environment
+Copy the example env and adjust if needed:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.example .env
+```
+Defaults:
+- `DB_PATH=./sqlite/db.sqlite` — SQLite database file (relative to repo root)
+
+## Install deps
+```bash
+pnpm install
+```
+If `better-sqlite3` needs to rebuild, ensure you have a C/C++ toolchain (Python 3, make, gcc/clang).
+
+## Create/upgrade the database
+```bash
+pnpm db:push
+```
+This syncs Drizzle schema to the SQLite file at `DB_PATH`. You can inspect data with:
+```bash
+pnpm db:studio
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Seed / ingest data
+- Ingest NBA API responses, validate with Zod (see `lib/validation/nba.ts`), then upsert via `db/queries.ts`.
+- Example flow:
+  1) Fetch from `nba_api`
+  2) Normalize with `normalizePlayerIndex`/`normalizePlayerGameLogs`
+  3) `await upsertPlayers(...)` / `await upsertPlayerGameLogs(...)`
+  4) Call `revalidateTag("players")` after writes to refresh server-component caches
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Run the app
+```bash
+pnpm dev
+```
+Visit http://localhost:3000. The home page reads from SQLite in a server component and shows players if present.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Caching helper (optional)
+- A simple TTL cache lives in `db/web_cache` with helpers in `db/cache.ts`:
+  - `getCached(key)` returns cached payload if fresh (or stale within optional stale window).
+  - `setCache(key, payload, { ttlSeconds, staleAfterSeconds?, status? })` upserts.
+  - `pruneExpired()` deletes expired rows.
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Scripts
+- `pnpm dev` — run Next.js dev server
+- `pnpm db:push` — sync schema to SQLite
+- `pnpm db:studio` — open Drizzle Studio
+- `pnpm lint` — run lint

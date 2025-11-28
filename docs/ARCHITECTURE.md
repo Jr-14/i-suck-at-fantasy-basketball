@@ -4,12 +4,26 @@ General architecture of this project.
 # API
 Using an unsupported NBA API via [nba_api](https://github.com/swar/nba_api)
 
+## Headers
+We need the following headers when making requests
+```text
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)
+Accept: application/json, text/plain, */*
+Accept-Language: en-US,en;q=0.9
+Referer: https://www.nba.com/
+Origin: https://www.nba.com
+Connection: keep-alive
+Host: stats.nba.com
+```
+
 ## [PlayerIndex](https://github.com/swar/nba_api/blob/master/docs/nba_api/stats/endpoints/playerindex.md)
 Retrieves all players
 
-### Example Response
-Example Response for the current season for NBA
+### Example Request & Response
+Request: 
+https://stats.nba.com/stats/playerindex?LeagueId=00&Season=2025-26
 
+Response: Example Response for the current season for NBA
 ```json
 {
   "resource": "playerindex",
@@ -99,11 +113,11 @@ Example Response for the current season for NBA
 ## [PlayerGameLog](https://github.com/swar/nba_api/blob/master/docs/nba_api/stats/endpoints/playergamelog.md)
 Retrieves the given players game logs and stats 
 
-### Example Response
-Example Response for Victor Wembanyama with `PlayerId` 1641705,
+### Example Request and Response
+Request: Example Request to Retrieve game logs for Victor Wembanyama with `PlayerId` 1641705
+https://stats.nba.com/stats/playergamelog?Season=2025-26&PlayerId=1641705&SeasonType=Regular Season
 
-It looks like it returns the most recent data in the `resultSets`.
-
+Response: It looks like it returns the most recent data in the `resultSets`.
 ```json
 {
   "resource": "playergamelog",
@@ -195,3 +209,10 @@ It looks like it returns the most recent data in the `resultSets`.
 - Steals (ST)
 - Blocked Shots (BLK)
 - Turnovers (TO)
+
+## App stack (web)
+- Next.js App Router with React Server Components for data reads.
+- SQLite + Drizzle ORM for structured storage of player metadata and logs.
+- Zod for validating inbound data from `nba_api` before it touches the database.
+- Drizzle Kit for schema management and the local studio.
+- SQLite file lives at `./skill-issue-app/sqlite/db.sql`; configure via `DB_PATH` in `.env`.

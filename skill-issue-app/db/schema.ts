@@ -8,7 +8,11 @@ export const players = sqliteTable("players", {
   slug: text("slug").notNull(),
   teamId: integer("team_id"),
   teamSlug: text("team_slug"),
+  teamCity: text("team_city"),
+  teamName: text("team_name"),
   position: text("position"),
+  jerseyNumber: text("jersey_number"),
+  rosterStatus: integer("roster_status"),
   height: text("height"),
   weight: text("weight"),
   fromYear: text("from_year"),
@@ -42,5 +46,20 @@ export const playerGameLogs = sqliteTable(
   },
   (table) => ({
     uniqueGame: uniqueIndex("player_game_unique").on(table.playerId, table.gameId),
+  }),
+);
+
+export const webCache = sqliteTable(
+  "web_cache",
+  {
+    key: text("key").primaryKey(),
+    payload: text("payload").notNull(), // JSON string of the response
+    status: integer("status").default(200),
+    fetchedAt: integer("fetched_at").notNull().default(sql`(unixepoch())`),
+    ttlSeconds: integer("ttl_seconds").notNull(),
+    staleAfterSeconds: integer("stale_after_seconds"), // optional stale-while-revalidate window
+  },
+  (table) => ({
+    keyIdx: uniqueIndex("web_cache_key_idx").on(table.key),
   }),
 );
