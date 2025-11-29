@@ -54,9 +54,9 @@ export const playerGameLogs = sqliteTable(
     videoAvailable: integer("video_available"),
     createdAt: integer("created_at").default(sql`(unixepoch())`),
   },
-  (table) => ({
-    uniqueGame: uniqueIndex("player_game_unique").on(table.playerId, table.gameId),
-  }),
+  (table) => ([
+    uniqueIndex("player_game_unique").on(table.playerId, table.gameId),
+  ]),
 );
 
 export const webCache = sqliteTable(
@@ -69,7 +69,7 @@ export const webCache = sqliteTable(
     ttlSeconds: integer("ttl_seconds").notNull(),
     staleAfterSeconds: integer("stale_after_seconds"), // optional stale-while-revalidate window
   },
-  (table) => ({
-    keyIdx: uniqueIndex("web_cache_key_idx").on(table.key),
-  }),
+  (table) => ([
+    uniqueIndex("web_cache_key_idx").on(table.key),
+  ]),
 );
