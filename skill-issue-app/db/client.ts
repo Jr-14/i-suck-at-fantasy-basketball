@@ -1,4 +1,5 @@
-import Database from "better-sqlite3";
+// import Database from "better-sqlite3";
+import BetterSqlite3, { Database } from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { env } from "@/env";
 import * as schema from "./schema";
@@ -12,7 +13,7 @@ declare global {
   var __sqlite__: Database | undefined;
 }
 
-const sqlite = global.__sqlite__ ?? new Database(databasePath);
+const sqlite = global.__sqlite__ ?? new BetterSqlite3(databasePath);
 
 export const db =
   global.__db__ ??
