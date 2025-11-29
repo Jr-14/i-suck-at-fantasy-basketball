@@ -210,9 +210,17 @@ Response: It looks like it returns the most recent data in the `resultSets`.
 - Blocked Shots (BLK)
 - Turnovers (TO)
 
+# Intermediate Goals
+Imagine i have steven adams in my team
+And i wanna beat ashwin this week
+I wanna know if i pick up someone else
+Will it be better for my win chances or worse
+
 ## App stack (web)
 - Next.js App Router with React Server Components for data reads.
 - SQLite + Drizzle ORM for structured storage of player metadata and logs.
 - Zod for validating inbound data from `nba_api` before it touches the database.
 - Drizzle Kit for schema management and the local studio.
 - SQLite file lives at `./skill-issue-app/sqlite/db.sql`; configure via `DB_PATH` in `.env`.
+
+
