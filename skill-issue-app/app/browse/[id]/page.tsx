@@ -48,6 +48,7 @@ export default async function PlayerPage({ params }: PageProps) {
   }
 
   const { player, logs } = data;
+  const summary = summarizeLogs(logs);
 
   return (
     <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-8 px-6 py-12 md:px-10">
@@ -71,6 +72,74 @@ export default async function PlayerPage({ params }: PageProps) {
           cached via web_cache + SQLite
         </code>
       </div>
+
+      <section className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
+        <div className="flex items-center justify-between border-b border-zinc-100 px-6 py-4">
+          <div>
+            <h2 className="text-xl font-semibold text-zinc-900">Totals & Averages</h2>
+            <p className="text-sm text-zinc-600">Aggregated from cached game logs.</p>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="min-w-full border-collapse text-sm">
+            <thead className="bg-zinc-50 text-left text-xs uppercase tracking-wide text-zinc-500">
+              <tr>
+                <th className="px-4 py-3">GP</th>
+                <th className="px-4 py-3">W</th>
+                <th className="px-4 py-3">L</th>
+                <th className="px-4 py-3">MIN</th>
+                <th className="px-4 py-3">PTS</th>
+                <th className="px-4 py-3">FGM</th>
+                <th className="px-4 py-3">FGA</th>
+                <th className="px-4 py-3">FG%</th>
+                <th className="px-4 py-3">3PM</th>
+                <th className="px-4 py-3">3PA</th>
+                <th className="px-4 py-3">3P%</th>
+                <th className="px-4 py-3">FTM</th>
+                <th className="px-4 py-3">FTA</th>
+                <th className="px-4 py-3">FT%</th>
+                <th className="px-4 py-3">OREB</th>
+                <th className="px-4 py-3">DREB</th>
+                <th className="px-4 py-3">REB</th>
+                <th className="px-4 py-3">AST</th>
+                <th className="px-4 py-3">STL</th>
+                <th className="px-4 py-3">BLK</th>
+                <th className="px-4 py-3">TOV</th>
+                <th className="px-4 py-3">PF</th>
+                <th className="px-4 py-3">+/-</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="divide-x divide-zinc-100 border-t">
+                <td className="px-4 py-3 text-zinc-800">{summary.games}</td>
+                <td className="px-4 py-3 text-zinc-800">{summary.wins}</td>
+                <td className="px-4 py-3 text-zinc-800">{summary.losses}</td>
+                <td className="px-4 py-3 text-zinc-800">{summary.minutes}</td>
+                <td className="px-4 py-3 text-zinc-800">{summary.points}</td>
+                <td className="px-4 py-3 text-zinc-800">{summary.fgm}</td>
+                <td className="px-4 py-3 text-zinc-800">{summary.fga}</td>
+                <td className="px-4 py-3 text-zinc-800">{renderPct(summary.fgPctAvg)}</td>
+                <td className="px-4 py-3 text-zinc-800">{summary.fg3m}</td>
+                <td className="px-4 py-3 text-zinc-800">{summary.fg3a}</td>
+                <td className="px-4 py-3 text-zinc-800">{renderPct(summary.fg3PctAvg)}</td>
+                <td className="px-4 py-3 text-zinc-800">{summary.ftm}</td>
+                <td className="px-4 py-3 text-zinc-800">{summary.fta}</td>
+                <td className="px-4 py-3 text-zinc-800">{renderPct(summary.ftPctAvg)}</td>
+                <td className="px-4 py-3 text-zinc-800">{summary.oReb}</td>
+                <td className="px-4 py-3 text-zinc-800">{summary.dReb}</td>
+                <td className="px-4 py-3 text-zinc-800">{summary.rebounds}</td>
+                <td className="px-4 py-3 text-zinc-800">{summary.assists}</td>
+                <td className="px-4 py-3 text-zinc-800">{summary.steals}</td>
+                <td className="px-4 py-3 text-zinc-800">{summary.blocks}</td>
+                <td className="px-4 py-3 text-zinc-800">{summary.turnovers}</td>
+                <td className="px-4 py-3 text-zinc-800">{summary.personalFouls}</td>
+                <td className="px-4 py-3 text-zinc-800">{renderNumber(summary.plusMinusAvg)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
 
       <section className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-zinc-100 px-6 py-4">
@@ -163,4 +232,62 @@ function renderNumber(value: number | null | undefined) {
 function renderPct(value: number | null | undefined) {
   if (value === null || value === undefined) return "—";
   return `${(value * 100).toFixed(1)}%`;
+}
+
+type GameLog = Awaited<ReturnType<typeof getPlayerWithLogs>> extends {
+  logs: infer L;
+}
+  ? L extends (infer I)[]
+    ? I
+    : never
+  : never;
+
+function summarizeLogs(logs: GameLog[]) {
+  const sum = (getter: (log: GameLog) => number | null | undefined) =>
+    logs.reduce((acc, log) => {
+      const val = getter(log);
+      return acc + (typeof val === "number" ? val : 0);
+    }, 0);
+
+  const average = (getter: (log: GameLog) => number | null | undefined) => {
+    let total = 0;
+    let count = 0;
+    for (const log of logs) {
+      const val = getter(log);
+      if (typeof val === "number") {
+        total += val;
+        count += 1;
+      }
+    }
+    return count > 0 ? total / count : null;
+  };
+
+  const wins = logs.filter((log) => log.result === "W").length;
+  const losses = logs.filter((log) => log.result === "L").length;
+
+  return {
+    games: logs.length,
+    wins,
+    losses,
+    minutes: sum((l) => l.minutes),
+    points: sum((l) => l.points),
+    fgm: sum((l) => l.fgm),
+    fga: sum((l) => l.fga),
+    fgPctAvg: average((l) => l.fgPct),
+    fg3m: sum((l) => l.fg3m),
+    fg3a: sum((l) => l.fg3a),
+    fg3PctAvg: average((l) => l.threePtPct),
+    ftm: sum((l) => l.ftm),
+    fta: sum((l) => l.fta),
+    ftPctAvg: average((l) => l.ftPct),
+    oReb: sum((l) => l.oReb),
+    dReb: sum((l) => l.dReb),
+    rebounds: sum((l) => l.rebounds),
+    assists: sum((l) => l.assists),
+    steals: sum((l) => l.steals),
+    blocks: sum((l) => l.blocks),
+    turnovers: sum((l) => l.turnovers),
+    personalFouls: sum((l) => l.personalFouls),
+    plusMinusAvg: average((l) => l.plusMinus),
+  };
 }
