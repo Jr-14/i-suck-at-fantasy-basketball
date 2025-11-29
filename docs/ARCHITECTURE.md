@@ -216,6 +216,21 @@ And i wanna beat ashwin this week
 I wanna know if i pick up someone else
 Will it be better for my win chances or worse
 
+- which players are available to pick up based on if they're rostered in a team
+- their average status, and predict their project based on averages (and maybe some other metrics)
+- Important to know what categories are expect to win and expected to lose and by what margin
+- give you a list of candidates based on your match up for the week and who you can pickup/drop to optimise
+- give summary for the week based on matchups
+
+Every week I ran every team in our league for each category
+If my next week match up is rank 1 in steals last week and I'm rank 8
+I'll probably be like yeah nah I aint winning that, I'll prioritise something else to try and win
+Maybe one where I"m rank 6 and they're rank 4
+
+# Some corner cases
+- US vs AUS dates timezone conversions
+- Game weeks and how that fits in
+
 ## App stack (web)
 - Next.js App Router with React Server Components for data reads.
 - SQLite + Drizzle ORM for structured storage of player metadata and logs.

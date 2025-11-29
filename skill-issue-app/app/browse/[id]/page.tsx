@@ -134,7 +134,7 @@ export default async function PlayerPage({ params }: PageProps) {
                 <td className="px-4 py-3 text-zinc-800">{summary.blocks}</td>
                 <td className="px-4 py-3 text-zinc-800">{summary.turnovers}</td>
                 <td className="px-4 py-3 text-zinc-800">{summary.personalFouls}</td>
-                <td className="px-4 py-3 text-zinc-800">{renderNumber(summary.plusMinusAvg)}</td>
+                <td className="px-4 py-3 text-zinc-800">{renderNumber(summary.plusMinusAvg, 2)}</td>
               </tr>
             </tbody>
           </table>
@@ -225,8 +225,12 @@ export default async function PlayerPage({ params }: PageProps) {
   );
 }
 
-function renderNumber(value: number | null | undefined) {
-  return value ?? "—";
+function renderNumber(value: number | null | undefined, decimals?: number) {
+  if (value === null || value === undefined) return "—";
+  if (typeof decimals === "number") {
+    return Number(value).toFixed(decimals);
+  }
+  return value;
 }
 
 function renderPct(value: number | null | undefined) {
