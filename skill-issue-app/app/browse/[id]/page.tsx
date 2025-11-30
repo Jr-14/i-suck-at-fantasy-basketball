@@ -85,6 +85,7 @@ export default async function PlayerPage({ params }: PageProps) {
           <table className="min-w-full border-collapse text-sm">
             <thead className="bg-zinc-50 text-left text-xs uppercase tracking-wide text-zinc-500">
               <tr>
+                <th className="px-4 py-3">Type</th>
                 <th className="px-4 py-3">GP</th>
                 <th className="px-4 py-3">W</th>
                 <th className="px-4 py-3">L</th>
@@ -111,31 +112,83 @@ export default async function PlayerPage({ params }: PageProps) {
               </tr>
             </thead>
             <tbody>
-              <tr className="divide-x divide-zinc-100 border-t">
-                <td className="px-4 py-3 text-zinc-800">{summary.games}</td>
-                <td className="px-4 py-3 text-zinc-800">{summary.wins}</td>
-                <td className="px-4 py-3 text-zinc-800">{summary.losses}</td>
-                <td className="px-4 py-3 text-zinc-800">{summary.minutes}</td>
-                <td className="px-4 py-3 text-zinc-800">{summary.points}</td>
-                <td className="px-4 py-3 text-zinc-800">{summary.fgm}</td>
-                <td className="px-4 py-3 text-zinc-800">{summary.fga}</td>
-                <td className="px-4 py-3 text-zinc-800">{renderPct(summary.fgPctAvg)}</td>
-                <td className="px-4 py-3 text-zinc-800">{summary.fg3m}</td>
-                <td className="px-4 py-3 text-zinc-800">{summary.fg3a}</td>
-                <td className="px-4 py-3 text-zinc-800">{renderPct(summary.fg3PctAvg)}</td>
-                <td className="px-4 py-3 text-zinc-800">{summary.ftm}</td>
-                <td className="px-4 py-3 text-zinc-800">{summary.fta}</td>
-                <td className="px-4 py-3 text-zinc-800">{renderPct(summary.ftPctAvg)}</td>
-                <td className="px-4 py-3 text-zinc-800">{summary.oReb}</td>
-                <td className="px-4 py-3 text-zinc-800">{summary.dReb}</td>
-                <td className="px-4 py-3 text-zinc-800">{summary.rebounds}</td>
-                <td className="px-4 py-3 text-zinc-800">{summary.assists}</td>
-                <td className="px-4 py-3 text-zinc-800">{summary.steals}</td>
-                <td className="px-4 py-3 text-zinc-800">{summary.blocks}</td>
-                <td className="px-4 py-3 text-zinc-800">{summary.turnovers}</td>
-                <td className="px-4 py-3 text-zinc-800">{summary.personalFouls}</td>
-                <td className="px-4 py-3 text-zinc-800">{renderNumber(summary.plusMinusAvg, 2)}</td>
-              </tr>
+              {[
+                {
+                  label: "Total",
+                  data: summary,
+                },
+                {
+                  label: "Average",
+                  data: summary.perGame,
+                },
+              ].map((row) => (
+                <tr key={row.label} className="divide-x divide-zinc-100 border-t">
+                  <td className="px-4 py-3 font-semibold text-zinc-800">{row.label}</td>
+                  <td className="px-4 py-3 text-zinc-800">{row.data.games ?? "—"}</td>
+                  <td className="px-4 py-3 text-zinc-800">{row.label === "Total" ? summary.wins : "—"}</td>
+                  <td className="px-4 py-3 text-zinc-800">{row.label === "Total" ? summary.losses : "—"}</td>
+                  <td className="px-4 py-3 text-zinc-800">
+                    {row.label === "Total" ? renderNumber(row.data.minutes) : renderNumber(row.data.minutes, 2)}
+                  </td>
+                  <td className="px-4 py-3 text-zinc-800">
+                    {row.label === "Total" ? renderNumber(row.data.points) : renderNumber(row.data.points, 2)}
+                  </td>
+                  <td className="px-4 py-3 text-zinc-800">
+                    {row.label === "Total" ? renderNumber(row.data.fgm) : renderNumber(row.data.fgm, 2)}
+                  </td>
+                  <td className="px-4 py-3 text-zinc-800">
+                    {row.label === "Total" ? renderNumber(row.data.fga) : renderNumber(row.data.fga, 2)}
+                  </td>
+                  <td className="px-4 py-3 text-zinc-800">
+                    {renderPct(row.label === "Total" ? summary.fgPctAvg : summary.fgPctAvg)}
+                  </td>
+                  <td className="px-4 py-3 text-zinc-800">
+                    {row.label === "Total" ? renderNumber(row.data.fg3m) : renderNumber(row.data.fg3m, 2)}
+                  </td>
+                  <td className="px-4 py-3 text-zinc-800">
+                    {row.label === "Total" ? renderNumber(row.data.fg3a) : renderNumber(row.data.fg3a, 2)}
+                  </td>
+                  <td className="px-4 py-3 text-zinc-800">
+                    {renderPct(row.label === "Total" ? summary.fg3PctAvg : summary.fg3PctAvg)}
+                  </td>
+                  <td className="px-4 py-3 text-zinc-800">
+                    {row.label === "Total" ? renderNumber(row.data.ftm) : renderNumber(row.data.ftm, 2)}
+                  </td>
+                  <td className="px-4 py-3 text-zinc-800">
+                    {row.label === "Total" ? renderNumber(row.data.fta) : renderNumber(row.data.fta, 2)}
+                  </td>
+                  <td className="px-4 py-3 text-zinc-800">
+                    {renderPct(row.label === "Total" ? summary.ftPctAvg : summary.ftPctAvg)}
+                  </td>
+                  <td className="px-4 py-3 text-zinc-800">
+                    {row.label === "Total" ? renderNumber(row.data.oReb) : renderNumber(row.data.oReb, 2)}
+                  </td>
+                  <td className="px-4 py-3 text-zinc-800">
+                    {row.label === "Total" ? renderNumber(row.data.dReb) : renderNumber(row.data.dReb, 2)}
+                  </td>
+                  <td className="px-4 py-3 text-zinc-800">
+                    {row.label === "Total" ? renderNumber(row.data.rebounds) : renderNumber(row.data.rebounds, 2)}
+                  </td>
+                  <td className="px-4 py-3 text-zinc-800">
+                    {row.label === "Total" ? renderNumber(row.data.assists) : renderNumber(row.data.assists, 2)}
+                  </td>
+                  <td className="px-4 py-3 text-zinc-800">
+                    {row.label === "Total" ? renderNumber(row.data.steals) : renderNumber(row.data.steals, 2)}
+                  </td>
+                  <td className="px-4 py-3 text-zinc-800">
+                    {row.label === "Total" ? renderNumber(row.data.blocks) : renderNumber(row.data.blocks, 2)}
+                  </td>
+                  <td className="px-4 py-3 text-zinc-800">
+                    {row.label === "Total" ? renderNumber(row.data.turnovers) : renderNumber(row.data.turnovers, 2)}
+                  </td>
+                  <td className="px-4 py-3 text-zinc-800">
+                    {row.label === "Total" ? renderNumber(row.data.personalFouls) : renderNumber(row.data.personalFouls, 2)}
+                  </td>
+                  <td className="px-4 py-3 text-zinc-800">
+                    {renderNumber(row.label === "Total" ? summary.plusMinusAvg : summary.plusMinusAvg, 2)}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
@@ -269,7 +322,7 @@ function summarizeLogs(logs: GameLog[]) {
   const wins = logs.filter((log) => log.result === "W").length;
   const losses = logs.filter((log) => log.result === "L").length;
 
-  return {
+  const totals = {
     games: logs.length,
     wins,
     losses,
@@ -293,5 +346,31 @@ function summarizeLogs(logs: GameLog[]) {
     turnovers: sum((l) => l.turnovers),
     personalFouls: sum((l) => l.personalFouls),
     plusMinusAvg: average((l) => l.plusMinus),
+  };
+
+  const games = totals.games || 0;
+  const perGameValue = (value: number) => (games > 0 ? value / games : null);
+
+  return {
+    ...totals,
+    perGame: {
+      games: games,
+      minutes: perGameValue(totals.minutes),
+      points: perGameValue(totals.points),
+      fgm: perGameValue(totals.fgm),
+      fga: perGameValue(totals.fga),
+      fg3m: perGameValue(totals.fg3m),
+      fg3a: perGameValue(totals.fg3a),
+      ftm: perGameValue(totals.ftm),
+      fta: perGameValue(totals.fta),
+      oReb: perGameValue(totals.oReb),
+      dReb: perGameValue(totals.dReb),
+      rebounds: perGameValue(totals.rebounds),
+      assists: perGameValue(totals.assists),
+      steals: perGameValue(totals.steals),
+      blocks: perGameValue(totals.blocks),
+      turnovers: perGameValue(totals.turnovers),
+      personalFouls: perGameValue(totals.personalFouls),
+    },
   };
 }

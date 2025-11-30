@@ -1,10 +1,21 @@
 import { and, asc, eq, like, or, sql } from "drizzle-orm";
 import { db } from "./client";
-import { playerGameLogs, players } from "./schema";
+import {
+  lineupPlayers,
+  lineups,
+  playerGameLogs,
+  players,
+  SelectPlayerGameLog,
+  type SelectLineup,
+  type SelectLineupPlayer,
+  type SelectPlayer,
+} from "./schema";
 import type { PlayerGameLogRow, PlayerIndexRow } from "@/lib/validation/nba";
 
-export async function listPlayers(limit = 25) {
-  return db
+export async function listPlayers(
+  limit = 25
+): Promise<SelectPlayer[]> {
+  return await db
     .select()
     .from(players)
     .orderBy(asc(players.lastName), asc(players.firstName))
@@ -36,7 +47,7 @@ export async function searchPlayersByName(query: string, limit = 50) {
     );
   });
 
-  return db
+  return await db
     .select()
     .from(players)
     .where(and(...clauses))
@@ -44,7 +55,7 @@ export async function searchPlayersByName(query: string, limit = 50) {
     .limit(limit);
 }
 
-type SearchResult = {
+interface SearchResult {
   players: Awaited<ReturnType<typeof listPlayers>>;
   total: number;
   page: number;
@@ -97,7 +108,14 @@ export async function searchPlayersByNamePaged(
   return { players: rows, total, page: safePage, pageSize };
 }
 
-export async function getPlayerWithLogs(playerId: number, limit = 200) {
+interface PlayerWithLogs {
+  player: SelectPlayer;
+  logs: SelectPlayerGameLog[]
+}
+
+export async function getPlayerWithLogs(
+  playerId: number, limit = 200
+): Promise<PlayerWithLogs | null> {
   const [player] = await db
     .select()
     .from(players)
@@ -119,7 +137,7 @@ export async function getPlayerWithLogs(playerId: number, limit = 200) {
 export async function upsertPlayers(rows: PlayerIndexRow[]) {
   if (rows.length === 0) return [];
 
-  return db.transaction((tx) => {
+  return await db.transaction((tx) => {
     const ids: number[] = [];
 
     for (const row of rows) {
@@ -141,6 +159,10 @@ export async function upsertPlayers(rows: PlayerIndexRow[]) {
           weight: row.WEIGHT ?? undefined,
           fromYear: row.FROM_YEAR ?? undefined,
           toYear: row.TO_YEAR ?? undefined,
+          points: row.PTS ?? undefined,
+          rebounds: row.REB ?? undefined,
+          assists: row.AST ?? undefined,
+          statsTimeframe: row.STATS_TIMEFRAME ?? undefined,
         })
         .onConflictDoUpdate({
           target: players.id,
@@ -159,6 +181,10 @@ export async function upsertPlayers(rows: PlayerIndexRow[]) {
             weight: row.WEIGHT ?? undefined,
             fromYear: row.FROM_YEAR ?? undefined,
             toYear: row.TO_YEAR ?? undefined,
+            points: row.PTS ?? undefined,
+            rebounds: row.REB ?? undefined,
+            assists: row.AST ?? undefined,
+            statsTimeframe: row.STATS_TIMEFRAME ?? undefined,
           },
         })
         .run();
@@ -253,4 +279,139 @@ export async function getRecentGameLogs(playerId: number, limit = 10) {
     .from(playerGameLogs)
     .where(eq(playerGameLogs.playerId, playerId))
     .limit(limit);
+}
+
+export async function listLineups(): Promise<SelectLineup[]> {
+  return db.select().from(lineups).orderBy(asc(lineups.createdAt));
+}
+
+export async function getLineup(lineupId: number): Promise<SelectLineup | null> {
+  const [row] = await db.select().from(lineups).where(eq(lineups.id, lineupId)).limit(1);
+  return row ?? null;
+}
+
+export async function createLineup(name: string): Promise<SelectLineup> {
+  const trimmed = name.trim();
+  const value = trimmed.length === 0 ? "My lineup" : trimmed;
+
+  const existing = await db
+    .select()
+    .from(lineups)
+    .where(eq(lineups.name, value))
+    .limit(1);
+
+  if (existing.length > 0) return existing[0];
+
+  const [created] = await db
+    .insert(lineups)
+    .values({ name: value })
+    .returning();
+
+  return created;
+}
+
+export async function listLineupIds(lineupId: number): Promise<number[]> {
+  const rows = await db
+    .select({ playerId: lineupPlayers.playerId })
+    .from(lineupPlayers)
+    .where(eq(lineupPlayers.lineupId, lineupId));
+  return rows.map((row) => row.playerId);
+}
+
+export async function addPlayerToLineup(lineupId: number, playerId: number) {
+  await db
+    .insert(lineupPlayers)
+    .values({ lineupId, playerId })
+    .onConflictDoNothing({ target: [lineupPlayers.lineupId, lineupPlayers.playerId] });
+}
+
+export async function removePlayerFromLineup(lineupId: number, playerId: number) {
+  await db
+    .delete(lineupPlayers)
+    .where(and(eq(lineupPlayers.lineupId, lineupId), eq(lineupPlayers.playerId, playerId)));
+}
+
+export type LineupEntryWithStats = {
+  lineupPlayer: SelectLineupPlayer;
+  lineup: SelectLineup;
+  player: SelectPlayer;
+  stats: {
+    games: number;
+    fgPct: number | null;
+    ftPct: number | null;
+    threePtMade: number | null;
+    points: number | null;
+    rebounds: number | null;
+    assists: number | null;
+    steals: number | null;
+    blocks: number | null;
+    turnovers: number | null;
+  };
+};
+
+export async function listLineupWithStats(lineupId: number): Promise<LineupEntryWithStats[]> {
+  const rows = await db
+    .select({
+      lineupPlayer: lineupPlayers,
+      lineup: lineups,
+      player: players,
+      games: sql<number>`count(${playerGameLogs.id})`,
+      fgPct: sql<number | null>`avg(${playerGameLogs.fgPct})`,
+      ftPct: sql<number | null>`avg(${playerGameLogs.ftPct})`,
+      threePtMade: sql<number | null>`avg(${playerGameLogs.fg3m})`,
+      points: sql<number | null>`avg(${playerGameLogs.points})`,
+      rebounds: sql<number | null>`avg(${playerGameLogs.rebounds})`,
+      assists: sql<number | null>`avg(${playerGameLogs.assists})`,
+      steals: sql<number | null>`avg(${playerGameLogs.steals})`,
+      blocks: sql<number | null>`avg(${playerGameLogs.blocks})`,
+      turnovers: sql<number | null>`avg(${playerGameLogs.turnovers})`,
+    })
+    .from(lineupPlayers)
+    .innerJoin(players, eq(lineupPlayers.playerId, players.id))
+    .innerJoin(lineups, eq(lineupPlayers.lineupId, lineups.id))
+    .leftJoin(playerGameLogs, eq(playerGameLogs.playerId, players.id))
+    .where(eq(lineupPlayers.lineupId, lineupId))
+    .groupBy(lineupPlayers.id, players.id, lineups.id)
+    .orderBy(asc(lineupPlayers.createdAt));
+
+  return rows.map((row) => ({
+    lineupPlayer: row.lineupPlayer,
+    lineup: row.lineup,
+    player: row.player,
+    stats: {
+      games: Number(row.games) || 0,
+      fgPct: row.fgPct,
+      ftPct: row.ftPct,
+      threePtMade: row.threePtMade,
+      points: row.points,
+      rebounds: row.rebounds,
+      assists: row.assists,
+      steals: row.steals,
+      blocks: row.blocks,
+      turnovers: row.turnovers,
+    },
+  }));
+}
+
+export async function lineupSummaries() {
+  return db
+    .select({
+      lineup: lineups,
+      games: sql<number>`count(${playerGameLogs.id})`,
+      fgPct: sql<number | null>`avg(${playerGameLogs.fgPct})`,
+      ftPct: sql<number | null>`avg(${playerGameLogs.ftPct})`,
+      threePtMade: sql<number | null>`avg(${playerGameLogs.fg3m})`,
+      points: sql<number | null>`avg(${playerGameLogs.points})`,
+      rebounds: sql<number | null>`avg(${playerGameLogs.rebounds})`,
+      assists: sql<number | null>`avg(${playerGameLogs.assists})`,
+      steals: sql<number | null>`avg(${playerGameLogs.steals})`,
+      blocks: sql<number | null>`avg(${playerGameLogs.blocks})`,
+      turnovers: sql<number | null>`avg(${playerGameLogs.turnovers})`,
+    })
+    .from(lineups)
+    .leftJoin(lineupPlayers, eq(lineupPlayers.lineupId, lineups.id))
+    .leftJoin(players, eq(lineupPlayers.playerId, players.id))
+    .leftJoin(playerGameLogs, eq(playerGameLogs.playerId, players.id))
+    .groupBy(lineups.id)
+    .orderBy(asc(lineups.createdAt));
 }

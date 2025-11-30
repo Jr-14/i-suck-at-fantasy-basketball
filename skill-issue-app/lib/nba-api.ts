@@ -17,7 +17,7 @@ const PLAYER_INDEX_HEADERS = {
 };
 
 // bump key when shape changes so cached payloads refresh
-const PLAYER_INDEX_CACHE_KEY = "playerindex:2025-26:v2";
+const PLAYER_INDEX_CACHE_KEY = "playerindex:2025-26:v3";
 const PLAYER_INDEX_TTL_SECONDS = 60 * 30; // 30 minutes
 
 const PLAYER_GAME_LOG_HEADERS = PLAYER_INDEX_HEADERS;

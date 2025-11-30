@@ -1,11 +1,17 @@
-import { searchPlayersByNamePaged } from "@/db/queries";
+import { addPlayerToLineupAction, createLineupAndRedirectAction } from "@/app/actions/lineup";
+import {
+  getLineup,
+  listLineupIds,
+  listLineups,
+  searchPlayersByNamePaged,
+} from "@/db/queries";
 import { fetchPlayerIndex } from "@/lib/nba-api";
 import Link from "next/link";
 
 type PageProps = {
   searchParams?:
-    | Promise<{ q?: string | string[]; page?: string | string[] }>
-    | { q?: string | string[]; page?: string | string[] };
+    | Promise<{ q?: string | string[]; page?: string | string[]; lineupId?: string | string[] }>
+    | { q?: string | string[]; page?: string | string[]; lineupId?: string | string[] };
 };
 
 export const runtime = "nodejs";
@@ -15,8 +21,16 @@ const PAGE_SIZE = 20;
 export default async function BrowsePage({ searchParams }: PageProps) {
   const resolvedSearchParams =
     searchParams && typeof (searchParams as Promise<unknown>).then === "function"
-      ? await (searchParams as Promise<{ q?: string | string[]; page?: string | string[] }>)
-      : ((searchParams as { q?: string | string[]; page?: string | string[] } | undefined) ?? {});
+      ? await (searchParams as Promise<{
+          q?: string | string[];
+          page?: string | string[];
+          lineupId?: string | string[];
+        }>)
+      : ((searchParams as {
+          q?: string | string[];
+          page?: string | string[];
+          lineupId?: string | string[];
+        } | undefined) ?? {});
 
   const rawQuery = resolvedSearchParams.q;
   const query = Array.isArray(rawQuery)
@@ -29,6 +43,11 @@ export default async function BrowsePage({ searchParams }: PageProps) {
     : Number.parseInt(rawPage ?? "1", 10);
   const page = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1;
 
+  const rawLineupId = resolvedSearchParams.lineupId;
+  const parsedLineupId = Array.isArray(rawLineupId)
+    ? Number.parseInt(rawLineupId[0] ?? "", 10)
+    : Number.parseInt(rawLineupId ?? "", 10);
+
   // Ensure the PlayerIndex payload is fetched and cached; on cache miss this also
   // upserts into the `players` table so browsing reads from SQLite.
   await fetchPlayerIndex();
@@ -38,6 +57,15 @@ export default async function BrowsePage({ searchParams }: PageProps) {
     page,
     PAGE_SIZE,
   );
+  const allLineups = await listLineups();
+  const activeLineupId = Number.isFinite(parsedLineupId)
+    ? parsedLineupId
+    : allLineups[0]?.id ?? null;
+  const activeLineup =
+    activeLineupId !== null
+      ? allLineups.find((lineup) => lineup.id === activeLineupId) ?? (await getLineup(activeLineupId))
+      : null;
+  const lineupIds = activeLineup ? new Set(await listLineupIds(activeLineup.id)) : new Set<number>();
 
   const hasQuery = query.length > 0;
   const totalPages = total > 0 ? Math.ceil(total / PAGE_SIZE) : 1;
@@ -46,8 +74,18 @@ export default async function BrowsePage({ searchParams }: PageProps) {
     const params = new URLSearchParams();
     if (query) params.set("q", query);
     params.set("page", targetPage.toString());
+    if (activeLineupId) params.set("lineupId", String(activeLineupId));
     return `/browse?${params.toString()}`;
   };
+
+  const redirectTo = (() => {
+    const params = new URLSearchParams();
+    if (query) params.set("q", query);
+    params.set("page", String(currentPage));
+    if (activeLineupId) params.set("lineupId", String(activeLineupId));
+    const qs = params.toString();
+    return `/browse${qs ? `?${qs}` : ""}`;
+  })();
 
   return (
     <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-8 px-6 py-12 md:px-10">
@@ -62,6 +100,46 @@ export default async function BrowsePage({ searchParams }: PageProps) {
         </p>
       </header>
 
+      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-zinc-200 bg-white px-4 py-3 shadow-sm">
+        <div className="text-sm font-semibold text-zinc-900">Lineup</div>
+        {allLineups.length > 0 ? (
+          <form action="/browse" className="flex flex-wrap items-center gap-2">
+            <input type="hidden" name="q" value={query} />
+            <input type="hidden" name="page" value={currentPage} />
+            <label className="text-xs font-medium uppercase tracking-wide text-zinc-600" htmlFor="lineupId">
+              Active
+            </label>
+            <select
+              id="lineupId"
+              name="lineupId"
+              defaultValue={activeLineup?.id}
+              className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 shadow-inner focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+            >
+              {allLineups.map((lineup) => (
+                <option key={lineup.id} value={lineup.id}>
+                  {lineup.name}
+                </option>
+              ))}
+            </select>
+            <button
+              type="submit"
+              className="inline-flex items-center justify-center rounded-lg border border-zinc-300 px-3 py-2 text-sm font-semibold text-zinc-800 transition hover:border-emerald-400 hover:text-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500"
+            >
+              Load
+            </button>
+          </form>
+        ) : (
+          <p className="text-sm text-zinc-600">Create a lineup to start adding players.</p>
+        )}
+        <CreateLineupForm redirectTo={redirectTo} />
+        <Link
+          href="/lineups"
+          className="inline-flex items-center justify-center rounded-lg border border-zinc-200 px-3 py-2 text-sm font-semibold text-zinc-700 transition hover:border-emerald-300 hover:text-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500"
+        >
+          Compare lineups
+        </Link>
+      </div>
+
       <form className="flex flex-col gap-3 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:px-6" action="/browse">
         <div className="flex-1">
           <label className="block text-sm font-medium text-zinc-700" htmlFor="q">
@@ -75,6 +153,9 @@ export default async function BrowsePage({ searchParams }: PageProps) {
             className="mt-1 w-full rounded-lg border border-zinc-300 px-4 py-2 text-sm text-zinc-900 shadow-inner focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200"
           />
         </div>
+        {activeLineup?.id ? (
+          <input type="hidden" name="lineupId" value={activeLineup.id} />
+        ) : null}
         <button
           type="submit"
           className="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-200"
@@ -110,12 +191,13 @@ export default async function BrowsePage({ searchParams }: PageProps) {
                 <th className="px-4 py-3">Height</th>
                 <th className="px-4 py-3">Weight</th>
                 <th className="px-4 py-3">Roster</th>
+                <th className="px-4 py-3 text-right">Lineup</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100">
               {players.length === 0 ? (
                 <tr>
-                  <td className="px-4 py-6 text-center text-sm text-zinc-600" colSpan={8}>
+                  <td className="px-4 py-6 text-center text-sm text-zinc-600" colSpan={9}>
                     No players found. Try a different search.
                   </td>
                 </tr>
@@ -153,6 +235,13 @@ export default async function BrowsePage({ searchParams }: PageProps) {
                     </td>
                     <td className="px-4 py-3 text-zinc-700">
                       {formatRosterStatus(player.rosterStatus)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <AddToLineupButton
+                        playerId={player.id}
+                        lineupId={activeLineup?.id ?? null}
+                        disabled={lineupIds.has(player.id)}
+                      />
                     </td>
                   </tr>
                 ))
@@ -193,4 +282,59 @@ function formatRosterStatus(value: number | null | undefined) {
   if (value === 1) return "ROSTERED";
   if (value === 0) return "NOT_ROSTERED";
   return "—";
+}
+
+function AddToLineupButton({
+  playerId,
+  lineupId,
+  disabled,
+}: {
+  playerId: number;
+  lineupId: number | null;
+  disabled: boolean;
+}) {
+  const cannotAdd = disabled || lineupId === null;
+  return (
+    <form action={addPlayerToLineupAction} className="flex justify-end">
+      <input type="hidden" name="playerId" value={playerId} />
+      <input type="hidden" name="lineupId" value={lineupId ?? ""} />
+      <button
+        type="submit"
+        disabled={cannotAdd}
+        className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold transition ${
+          cannotAdd
+            ? "cursor-not-allowed bg-zinc-100 text-zinc-400"
+            : "bg-emerald-600 text-white shadow-sm hover:bg-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500"
+        }`}
+        aria-label={
+          lineupId === null ? "Create a lineup first" : disabled ? "Already in lineup" : "Add to lineup"
+        }
+      >
+        {lineupId === null ? "Create lineup" : disabled ? "Added" : "+ Add"}
+      </button>
+    </form>
+  );
+}
+
+function CreateLineupForm({ redirectTo }: { redirectTo: string }) {
+  return (
+    <form action={createLineupAndRedirectAction} className="flex flex-wrap items-center gap-2">
+      <input type="hidden" name="redirectTo" value={redirectTo} />
+      <label className="text-xs font-medium uppercase tracking-wide text-zinc-600" htmlFor="newLineupName">
+        New
+      </label>
+      <input
+        id="newLineupName"
+        name="name"
+        placeholder="Lineup name"
+        className="w-40 rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 shadow-inner focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+      />
+      <button
+        type="submit"
+        className="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500"
+      >
+        Create
+      </button>
+    </form>
+  );
 }

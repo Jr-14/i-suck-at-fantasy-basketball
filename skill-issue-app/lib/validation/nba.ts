@@ -16,6 +16,10 @@ const playerIndexRow = z.object({
   WEIGHT: z.string().nullable(),
   FROM_YEAR: z.string().nullable(),
   TO_YEAR: z.string().nullable(),
+  PTS: z.coerce.number().nullable(),
+  REB: z.coerce.number().nullable(),
+  AST: z.coerce.number().nullable(),
+  STATS_TIMEFRAME: z.string().nullable(),
 });
 
 export const playerIndexResponse = z.object({

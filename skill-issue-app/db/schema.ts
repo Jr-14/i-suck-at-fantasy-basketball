@@ -17,7 +17,42 @@ export const players = sqliteTable("players", {
   weight: text("weight"),
   fromYear: text("from_year"),
   toYear: text("to_year"),
+  points: real("points"), // per-game points from PlayerIndex
+  rebounds: real("rebounds"), // per-game rebounds from PlayerIndex
+  assists: real("assists"), // per-game assists from PlayerIndex
+  statsTimeframe: text("stats_timeframe"),
 });
+
+export type SelectPlayer = typeof players.$inferSelect;
+
+export const lineups = sqliteTable(
+  "lineups",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    name: text("name").notNull(),
+    createdAt: integer("created_at").default(sql`(unixepoch())`),
+  },
+  (table) => [uniqueIndex("lineups_name_unique").on(table.name)],
+);
+
+export type SelectLineup = typeof lineups.$inferSelect;
+
+export const lineupPlayers = sqliteTable(
+  "lineup_players",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    lineupId: integer("lineup_id")
+      .notNull()
+      .references(() => lineups.id),
+    playerId: integer("player_id")
+      .notNull()
+      .references(() => players.id),
+    createdAt: integer("created_at").default(sql`(unixepoch())`),
+  },
+  (table) => [uniqueIndex("lineup_player_unique").on(table.lineupId, table.playerId)],
+);
+
+export type SelectLineupPlayer = typeof lineupPlayers.$inferSelect;
 
 export const playerGameLogs = sqliteTable(
   "player_game_logs",
@@ -58,6 +93,8 @@ export const playerGameLogs = sqliteTable(
     uniqueIndex("player_game_unique").on(table.playerId, table.gameId),
   ]),
 );
+
+export type SelectPlayerGameLog = typeof playerGameLogs.$inferSelect;
 
 export const webCache = sqliteTable(
   "web_cache",
