@@ -44,6 +44,7 @@ export async function getCached<T = unknown>(
     return { payload, status: row.status ?? 200, isStale };
   } catch (error) {
     // If payload is corrupted, treat as cache miss.
+    console.log('Failed to parse payload', error);
     return null;
   }
 }

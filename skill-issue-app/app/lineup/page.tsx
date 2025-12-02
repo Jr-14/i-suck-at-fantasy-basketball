@@ -2,7 +2,7 @@ import {
   createLineupAndRedirectAction,
   removePlayerFromLineupAction,
 } from "@/app/actions/lineup";
-import { getLineup, listLineupWithStats, listLineups, type LineupEntryWithStats } from "@/db/queries";
+import { getLineup, listLineupWithStats, listLineups } from "@/db/queries";
 import { summarizeLineup } from "@/lib/lineup";
 import Link from "next/link";
 
