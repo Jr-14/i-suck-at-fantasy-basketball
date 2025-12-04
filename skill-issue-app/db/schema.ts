@@ -47,6 +47,7 @@ export const lineupPlayers = sqliteTable(
     playerId: integer("player_id")
       .notNull()
       .references(() => players.id),
+    customPositions: text("custom_positions", { mode: "json" }).$type<string[] | null>(),
     createdAt: integer("created_at").default(sql`(unixepoch())`),
   },
   (table) => [uniqueIndex("lineup_player_unique").on(table.lineupId, table.playerId)],

@@ -3,3 +3,7 @@ onlyBuiltDependencies:
   - esbuild
   - sharp
   - unrs-resolver
+
+overrides:
+  esbuild@<=0.24.2: '>=0.25.0'
+  next@>=16.0.0-canary.0 <16.0.7: '>=16.0.7'

@@ -331,6 +331,16 @@ export async function removePlayerFromLineup(lineupId: number, playerId: number)
     .where(and(eq(lineupPlayers.lineupId, lineupId), eq(lineupPlayers.playerId, playerId)));
 }
 
+export async function updateLineupPlayerPositions(
+  lineupPlayerId: number,
+  positions: string[] | null,
+) {
+  await db
+    .update(lineupPlayers)
+    .set({ customPositions: positions })
+    .where(eq(lineupPlayers.id, lineupPlayerId));
+}
+
 export type LineupEntryWithStats = {
   lineupPlayer: SelectLineupPlayer;
   lineup: SelectLineup;

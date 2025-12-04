@@ -6,7 +6,9 @@ import {
   addPlayerToLineup,
   createLineup,
   removePlayerFromLineup,
+  updateLineupPlayerPositions,
 } from "@/db/queries";
+import { normalizeCustomPositions } from "@/lib/custom-positions";
 import { fetchPlayerGameLogs, fetchPlayerIndex } from "@/lib/nba-api";
 
 function parsePlayerId(formData: FormData) {
@@ -21,6 +23,18 @@ function parseLineupId(formData: FormData) {
   const parsed =
     typeof value === "string" ? Number.parseInt(value, 10) : Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function parseLineupPlayerId(formData: FormData) {
+  const value = formData.get("lineupPlayerId");
+  const parsed =
+    typeof value === "string" ? Number.parseInt(value, 10) : Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function parseCustomPositions(formData: FormData) {
+  const values = formData.getAll("customPositions");
+  return normalizeCustomPositions(values.map((value) => (typeof value === "string" ? value : String(value))));
 }
 
 export async function addPlayerToLineupAction(formData: FormData) {
@@ -45,6 +59,19 @@ export async function removePlayerFromLineupAction(formData: FormData) {
   if (!playerId || !lineupId) return;
 
   await removePlayerFromLineup(lineupId, playerId);
+
+  revalidatePath("/browse");
+  revalidatePath("/lineup");
+  revalidatePath("/lineups");
+}
+
+export async function updateLineupPlayerPositionsAction(formData: FormData) {
+  const lineupPlayerId = parseLineupPlayerId(formData);
+  const lineupId = parseLineupId(formData);
+  if (!lineupPlayerId || !lineupId) return;
+
+  const positions = parseCustomPositions(formData);
+  await updateLineupPlayerPositions(lineupPlayerId, positions.length > 0 ? positions : null);
 
   revalidatePath("/browse");
   revalidatePath("/lineup");

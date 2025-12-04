@@ -1,8 +1,10 @@
 import {
   createLineupAndRedirectAction,
   removePlayerFromLineupAction,
+  updateLineupPlayerPositionsAction,
 } from "@/app/actions/lineup";
 import { getLineup, listLineupWithStats, listLineups } from "@/db/queries";
+import { LINEUP_POSITIONS, normalizeCustomPositions, resolveLineupPositions } from "@/lib/custom-positions";
 import { summarizeLineup } from "@/lib/lineup";
 import Link from "next/link";
 
@@ -100,6 +102,7 @@ export default async function LineupPage({ searchParams }: PageProps) {
                     <th className="px-4 py-3">Name</th>
                     <th className="px-4 py-3">Team</th>
                     <th className="px-4 py-3">Pos</th>
+                    <th className="px-4 py-3">Lineup pos</th>
                     <th className="px-4 py-3 text-right">FG%</th>
                     <th className="px-4 py-3 text-right">FT%</th>
                     <th className="px-4 py-3 text-right">3PTM</th>
@@ -127,6 +130,14 @@ export default async function LineupPage({ searchParams }: PageProps) {
                           : player.teamName ?? "—"}
                       </td>
                       <td className="px-4 py-3 text-zinc-700">{player.position ?? "—"}</td>
+                      <td className="px-4 py-3 align-top">
+                        <CustomPositionSelector
+                          lineupId={activeLineup.id}
+                          lineupPlayerId={lineupPlayer.id}
+                          playerPosition={player.position}
+                          customPositions={lineupPlayer.customPositions}
+                        />
+                      </td>
                       <td className="px-4 py-3 text-right text-zinc-800">
                         {renderPct(playerStats.fgPct)}
                       </td>
@@ -154,7 +165,7 @@ export default async function LineupPage({ searchParams }: PageProps) {
                       <td className="px-4 py-3 text-right text-zinc-800">
                         {renderNumber(playerStats.turnovers)}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 align-top">
                         <form action={removePlayerFromLineupAction} className="flex justify-center">
                           <input type="hidden" name="playerId" value={player.id} />
                           <input type="hidden" name="lineupId" value={activeLineup.id} />
@@ -257,6 +268,67 @@ function CreateLineupForm({ redirectTo, cta = "New lineup" }: { redirectTo: stri
       >
         {cta}
       </button>
+    </form>
+  );
+}
+
+function CustomPositionSelector({
+  lineupPlayerId,
+  lineupId,
+  playerPosition,
+  customPositions,
+}: {
+  lineupPlayerId: number;
+  lineupId: number;
+  playerPosition: string | null | undefined;
+  customPositions: string[] | null | undefined;
+}) {
+  const normalizedCustom = normalizeCustomPositions(customPositions ?? []);
+  const resolvedPositions =
+    normalizedCustom.length > 0
+      ? normalizedCustom
+      : resolveLineupPositions(null, playerPosition ?? undefined);
+  const usingFallback = normalizedCustom.length === 0;
+
+  const helperText = usingFallback
+    ? playerPosition
+      ? `Defaulting to player position: ${playerPosition}`
+      : "No default position on record"
+    : "Saved for this lineup";
+
+  return (
+    <form action={updateLineupPlayerPositionsAction} className="flex flex-col gap-2">
+      <input type="hidden" name="lineupPlayerId" value={lineupPlayerId} />
+      <input type="hidden" name="lineupId" value={lineupId} />
+
+      <div className="flex flex-wrap gap-1">
+        {LINEUP_POSITIONS.map((pos) => (
+          <label key={pos} className="cursor-pointer">
+            <input
+              type="checkbox"
+              name="customPositions"
+              value={pos}
+              defaultChecked={resolvedPositions.includes(pos)}
+              className="peer sr-only"
+            />
+            <span className="rounded-full border border-zinc-300 px-2 py-1 text-[11px] font-semibold text-zinc-700 transition peer-checked:border-emerald-600 peer-checked:bg-emerald-600 peer-checked:text-white">
+              {pos}
+            </span>
+          </label>
+        ))}
+      </div>
+
+      <div className="flex items-center gap-2 text-xs text-zinc-600">
+        <button
+          type="submit"
+          className="inline-flex items-center justify-center rounded-md border border-emerald-200 px-2 py-1 text-[11px] font-semibold text-emerald-700 transition hover:border-emerald-400 hover:bg-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500"
+        >
+          Save
+        </button>
+        <span>{resolvedPositions.length > 0 ? resolvedPositions.join(" / ") : "Set positions"}</span>
+      </div>
+
+      <p className="text-[11px] text-zinc-500">{helperText}</p>
     </form>
   );
 }
